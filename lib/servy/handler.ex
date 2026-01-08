@@ -2,11 +2,19 @@ defmodule Servy.Handler do
   def handle(request) do
     request
     |> parse
+    |> rewrite_path
     |> log
     |> route
     |> format_response
   end
 
+  def rewrite_path(%{path: "/wildthings"} = conv) do
+    %{conv | path: "/wildthings"}
+  end
+
+  def rewrite_path(conv), do: conv
+
+  @spec log(any()) :: any()
   def log(conv), do: IO.inspect(conv)
 
   @spec parse(binary()) :: %{method: binary(), path: binary(), resp_body: <<>>}
