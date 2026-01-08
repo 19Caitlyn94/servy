@@ -1,0 +1,84 @@
+defmodule Servy.Handler do
+  def handle(request) do
+    request
+    |> parse
+    |> log
+    |> route
+    |> format_response
+  end
+
+  def log(conv), do: IO.inspect(conv)
+
+  @spec parse(binary()) :: %{method: binary(), path: binary(), resp_body: <<>>}
+  def parse(request) do
+    [method, path, _] =
+      request
+      |> String.split("\n")
+      |> hd
+      |> String.split(" ")
+
+    %{method: method, path: path, resp_body: "", status: nil}
+  end
+
+  def route(conv) do
+    route(conv, conv.method, conv.path)
+  end
+
+  def route(conv, "GET", "/bears") do
+    %{conv | status: 200, resp_body: "Teddy, Smokey, Paddington"}
+  end
+
+  def route(conv, "GET", "/bears/" <> id) do
+    %{conv | status: 200, resp_body: "Bear #{id}"}
+  end
+
+  def route(conv, "GET", "/wildthings") do
+    %{conv | status: 200, resp_body: "Bears, Lions, Tigers"}
+  end
+
+  def route(conv, "GET", "/bigfoot") do
+    %{conv | status: 200, resp_body: "Bigfoot is afoot!"}
+  end
+
+  def route(conv, _method, path) do
+    %{conv | status: 404, resp_body: "No #{path} here"}
+  end
+
+  def format_response(conv) do
+    """
+    HTTP/1.1 #{conv.status} #{format_status(conv.status)}
+    Content-Type: text/html
+    Content-Length: #{String.length(conv.resp_body)}
+
+    #{conv.resp_body}
+    """
+  end
+
+  defp format_status(status) do
+    %{
+      200 => "OK",
+      201 => "Created",
+      202 => "Accepted",
+      204 => "No Content",
+      302 => "Found",
+      304 => "Not Modified",
+      400 => "Bad Request",
+      401 => "Unauthorized",
+      403 => "Forbidden",
+      404 => "Not Found",
+      500 => "Internal Server Error",
+    }[status]
+  end
+end
+
+request = """
+GET /bears/1 HTTP/1.1
+Host: example.com
+User-Agent: ExampleBrowser/1.0
+Accept: */*
+
+"""
+
+response = Servy.Handler.handle(request)
+
+IO.puts(response)
