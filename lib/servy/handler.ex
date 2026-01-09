@@ -3,14 +3,19 @@ defmodule Servy.Handler do
     request
     |> parse
     |> rewrite_path
-    |> log
     |> route
     |> track
+    |> emojify
     |> format_response
+    |> log
   end
 
   def rewrite_path(%{path: "/wildthings"} = conv) do
     %{conv | path: "/wildthings"}
+  end
+
+  def rewrite_path(%{path: "/bears?id=" <> id} = conv) do
+    %{conv | path: "/bears/#{id}"}
   end
 
   def rewrite_path(conv), do: conv
@@ -58,17 +63,21 @@ defmodule Servy.Handler do
     IO.puts("Not found: #{path}")
     conv
   end
-
   def track(conv), do: conv
+
+    def emojify(%{status: 200} = conv) do
+      %{conv | resp_body: "✅ " <> conv.resp_body <> " ✅"}
+    end
+    def emojify(conv), do: conv
 
   def format_response(conv) do
     """
-    HTTP/1.1 #{conv.status} #{format_status(conv.status)}
-    Content-Type: text/html
-    Content-Length: #{String.length(conv.resp_body)}
+      HTTP/1.1 #{conv.status} #{format_status(conv.status)}
+      Content-Type: text/html
+      Content-Length: #{String.length(conv.resp_body)}
 
-    #{conv.resp_body}
-    """
+      #{conv.resp_body}
+      """
   end
 
   defp format_status(status) do
