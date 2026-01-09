@@ -9,21 +9,20 @@ defmodule Servy.Handler do
     |> format_response
     |> log
   end
-
-  def rewrite_path(%{path: "/wildthings"} = conv) do
-    %{conv | path: "/wildthings"}
+  def rewrite_path(%{path: path} = conv) do
+    regex = ~r{\/(?<thing>\w+)\?id=(?<id>\d+)}
+    captures = Regex.named_captures(regex, path)
+    rewrite_path_captures(conv, captures)
   end
 
-  def rewrite_path(%{path: "/bears?id=" <> id} = conv) do
-    %{conv | path: "/bears/#{id}"}
+  def rewrite_path_captures(conv, %{"thing" => thing, "id" => id}) do
+    %{ conv | path: "/#{thing}/#{id}" }
   end
 
-  def rewrite_path(conv), do: conv
+  def rewrite_path_captures(conv, nil), do: conv
 
   @spec log(any()) :: any()
   def log(conv), do: IO.inspect(conv)
-
-  @spec parse(binary()) :: %{method: binary(), path: binary(), resp_body: <<>>}
   def parse(request) do
     [method, path, _] =
       request
@@ -33,7 +32,6 @@ defmodule Servy.Handler do
 
     %{method: method, path: path, resp_body: "", status: nil}
   end
-
 
   def route(%{path: "/bears", method: "GET"} = conv) do
     %{conv | status: 200, resp_body: "Teddy, Smokey, Paddington"}
