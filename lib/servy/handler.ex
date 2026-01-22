@@ -1,3 +1,5 @@
+require Logger
+
 defmodule Servy.Handler do
   def handle(request) do
     request
@@ -9,6 +11,7 @@ defmodule Servy.Handler do
     |> format_response
     |> log
   end
+
   def rewrite_path(%{path: path} = conv) do
     regex = ~r{\/(?<thing>\w+)\?id=(?<id>\d+)}
     captures = Regex.named_captures(regex, path)
@@ -41,6 +44,28 @@ defmodule Servy.Handler do
     %{conv | status: 200, resp_body: "Bear #{id}"}
   end
 
+  def route(%{path: "/bears/new", method: "GET"} = conv) do
+    Path.expand("../../pages", __DIR__)
+      |> Path.join("form.html")
+      |> File.read()
+      |> handle_file(conv)
+  end
+
+  def route(%{path: "/about", method: "GET"} = conv) do
+    Path.expand("../../pages", __DIR__)
+      |> Path.join("about.html")
+      |> File.read()
+      |> handle_file(conv)
+  end
+
+  # It's important to note that you wouldn't want to permit this in a production-quality web server. It's a securiy risk that allows for trivial path traversal, and other avenues for exploits. So consider it purely an academic exercise.
+  def route(%{path: "/pages/" <> file , method: "GET"} = conv) do
+    Path.expand("../../pages", __DIR__)
+      |> Path.join(file <> ".html")
+      |> File.read()
+      |> handle_file(conv)
+  end
+
   def route(%{path: "/wildthings", method: "GET"} = conv) do
     %{conv | status: 200, resp_body: "Bears, Lions, Tigers"}
   end
@@ -55,6 +80,16 @@ defmodule Servy.Handler do
 
   def route(%{path: path} = conv) do
     %{conv | status: 404, resp_body: "No #{path} here"}
+  end
+
+  def handle_file({:ok, contents}, conv) do
+    %{conv | status: 200, resp_body: contents}
+  end
+  def handle_file({:error, :enoent}, conv) do
+    %{conv | status: 404, resp_body: "File not found"}
+  end
+  def handle_file({:error, reason}, conv) do
+    %{conv | status: 500, resp_body: "Error reading about page: #{reason}"}
   end
 
   def track(%{status: 404, path: path} = conv) do
@@ -95,14 +130,20 @@ defmodule Servy.Handler do
   end
 end
 
+# request = """
+# GET /about HTTP/1.1
+# Host: example.com
+# User-Agent: ExampleBrowser/1.0
+# Accept: */*
+
+# """
 request = """
-DELETE /bears/1 HTTP/1.1
+GET /bears/new HTTP/1.1
 Host: example.com
 User-Agent: ExampleBrowser/1.0
 Accept: */*
 
 """
-
 response = Servy.Handler.handle(request)
 
 IO.puts(response)
