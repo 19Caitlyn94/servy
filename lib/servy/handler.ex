@@ -1,6 +1,14 @@
 require Logger
 
 defmodule Servy.Handler do
+
+  @moduledoc """
+  Handles HTTP requests by parsing the request, routing to the appropriate handler, and returning the response.
+  """
+
+  @pages_path Path.expand("../../pages", __DIR__)
+
+  @doc " `Transform the request into a response`"
   def handle(request) do
     request
     |> parse
@@ -52,7 +60,7 @@ defmodule Servy.Handler do
   end
 
   def route(%{path: "/about", method: "GET"} = conv) do
-    Path.expand("../../pages", __DIR__)
+    @pages_path
       |> Path.join("about.html")
       |> File.read()
       |> handle_file(conv)
@@ -60,7 +68,7 @@ defmodule Servy.Handler do
 
   # It's important to note that you wouldn't want to permit this in a production-quality web server. It's a securiy risk that allows for trivial path traversal, and other avenues for exploits. So consider it purely an academic exercise.
   def route(%{path: "/pages/" <> file , method: "GET"} = conv) do
-    Path.expand("../../pages", __DIR__)
+    @pages_path
       |> Path.join(file <> ".html")
       |> File.read()
       |> handle_file(conv)
